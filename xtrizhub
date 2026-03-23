@@ -562,3 +562,55 @@ Rayfield:Notify({
 
 -- Tự động tải cấu hình
 Rayfield:LoadConfiguration()
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+
+    repeat task.wait() until player
+    repeat task.wait() until player:FindFirstChild("PlayerGui")
+
+    local PlayerGui = player.PlayerGui
+
+    local function create()
+        if PlayerGui:FindFirstChild("LightHubWatermark") then return end
+
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "LightHubWatermark"
+        sg.ResetOnSpawn = false
+        sg.IgnoreGuiInset = true
+        sg.Parent = PlayerGui
+
+        local txt = Instance.new("TextLabel")
+        txt.Parent = sg
+        txt.Size = UDim2.new(0, 400, 0, 50)
+        txt.AnchorPoint = Vector2.new(0.5, 0.5)
+        txt.Position = UDim2.new(0.5, 0, 0.5, 0)
+        txt.BackgroundTransparency = 1
+
+        txt.Text = "discord.gg/light-hub"
+        txt.Font = Enum.Font.GothamBold
+        txt.TextSize = 28
+
+        txt.TextColor3 = Color3.fromRGB(200, 200, 200)
+        txt.TextTransparency = 0.45
+        txt.TextStrokeTransparency = 1
+
+        txt.ZIndex = 999
+    end
+
+    task.wait(3)
+    create()
+
+    PlayerGui.ChildRemoved:Connect(function(c)
+        if c.Name == "LightHubWatermark" then
+            task.wait(1)
+            create()
+        end
+    end)
+
+    while true do
+        task.wait(5)
+        create()
+    end
+end)
+
