@@ -1,9 +1,9 @@
--- Titan Fishing Script - Tối ưu bởi Rayfield
+-- Titan Fishing Script - Được Code Bởi : xtriz
 -- Phiên bản: 1.0.0
--- Ngày: 2024
+-- Ngày: 23/03/2026
 
 -- Khai báo thư viện và dịch vụ
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/xtriz'))()
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
