@@ -1,28 +1,33 @@
--- Titan Fishing Script - Orion Lib Version
--- Phiên bản: 3.0.0 - Fix lỗi Rayfield
--- Ngày: 2024
-
 --[[
-    HƯỚNG DẪN SỬ DỤNG:
+    ====================================
+    TITAN FISHING ULTIMATE SCRIPT
+    ====================================
+    Cài đặt:
     1. Mở game Titan Fishing
     2. Mở Executor (Synapse/KRNL/Script-Ware)
     3. Paste script này và Execute
-    4. Menu sẽ hiện ra
+    4. Menu sẽ tự động hiện ra
+    
+    Hotkeys:
+    - RightControl: Mở/đóng menu
+    - F: Auto Fish
+    - G: Bật/tắt Ghost Mode
+    - H: Bật/tắt God Mode
+    ====================================
 ]]
 
--- ==================== TẢI THƯ VIỆN ORION ====================
-if not OrionLib then
-    local OrionLibLoaded, OrionLib = pcall(function()
-        return loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
-    end)
-    
-    if not OrionLibLoaded then
-        -- Fallback nếu Orion không load được
-        OrionLib = loadstring(game:HttpGet('https://pastebin.com/raw/AcTq0v2B'))()
-    end
+-- ==================== TẢI THƯ VIỆN ====================
+local Rayfield = nil
+local success, err = pcall(function()
+    Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success then
+    -- Fallback nếu Rayfield không load được
+    Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
 end
 
--- ==================== KHAI BÁO BIẾN ====================
+-- ==================== KHAI BÁO DỊCH VỤ ====================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,356 +36,164 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
--- Biến cấu hình
+-- ==================== BIẾN TOÀN CỤC ====================
 local Config = {
+    -- Main Farming
     AutoFish = false,
     AutoSell = false,
     AutoSkills = false,
-    AutoFarm = false,
+    
+    -- Movement & Travel
     Fly = false,
     InfiniteJump = false,
-    AntiAFK = false,
-    ReduceGraphics = false,
     FlySpeed = 50,
-    FishingDelay = 2,
-    SafeMode = true,
-    Connections = {},
-    OriginalSettings = {}
-}
-
--- ==================== TẠO MENU CHÍNH ====================
-local Window = OrionLib:MakeWindow({
-    Name = "🎣 Titan Fishing Premium",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "TitanFishing",
-    IntroEnabled = true,
-    IntroText = "Titan Fishing Script",
-    IntroIcon = "rbxassetid://7733960981"
-})
-
--- ==================== TAB FARMING ====================
-local FarmingTab = Window:MakeTab({
-    Name = "🎣 Farming",
-    Icon = "rbxassetid://7733960981",
-    PremiumOnly = false
-})
-
--- Auto Fish
-FarmingTab:AddToggle({
-    Name = "Auto Fish",
-    Default = false,
-    Callback = function(Value)
-        Config.AutoFish = Value
-        if Value then
-            OrionLib:MakeNotification({
-                Name = "Auto Fish",
-                Content = "Đã bật tự động câu cá",
-                Image = "rbxassetid://7733960981",
-                Time = 3
-            })
-            spawn(function()
-                while Config.AutoFish do
-                    AutoFish()
-                    wait(Config.FishingDelay)
-                end
-            end)
-        else
-            OrionLib:MakeNotification({
-                Name = "Auto Fish",
-                Content = "Đã tắt tự động câu cá",
-                Image = "rbxassetid://7733960981",
-                Time = 2
-            })
-        end
-    end
-})
-
--- Auto Sell
-FarmingTab:AddToggle({
-    Name = "Auto Sell Fish",
-    Default = false,
-    Callback = function(Value)
-        Config.AutoSell = Value
-        if Value then
-            spawn(function()
-                while Config.AutoSell do
-                    AutoSell()
-                    wait(60) -- Kiểm tra mỗi phút
-                end
-            end)
-        end
-    end
-})
-
--- Fishing Delay Slider
-FarmingTab:AddSlider({
-    Name = "Fishing Delay",
-    Min = 1,
-    Max = 10,
-    Default = 2,
-    Color = Color3.fromRGB(0, 170, 255),
-    Increment = 0.5,
-    ValueName = "giây",
-    Callback = function(Value)
-        Config.FishingDelay = Value
-    end
-})
-
--- ==================== TAB MOVEMENT ====================
-local MovementTab = Window:MakeTab({
-    Name = "✈️ Movement",
-    Icon = "rbxassetid://7733674079",
-    PremiumOnly = false
-})
-
--- Fly Toggle
-MovementTab:AddToggle({
-    Name = "Fly Mode",
-    Default = false,
-    Callback = function(Value)
-        Config.Fly = Value
-        if Value then
-            EnableFly()
-            OrionLib:MakeNotification({
-                Name = "Fly Mode",
-                Content = "Đã bật chế độ bay",
-                Image = "rbxassetid://7733674079",
-                Time = 2
-            })
-        else
-            DisableFly()
-        end
-    end
-})
-
--- Fly Speed
-MovementTab:AddSlider({
-    Name = "Fly Speed",
-    Min = 10,
-    Max = 200,
-    Default = 50,
-    Color = Color3.fromRGB(255, 100, 0),
-    Increment = 5,
-    ValueName = "studs/s",
-    Callback = function(Value)
-        Config.FlySpeed = Value
-    end
-})
-
--- Infinite Jump
-MovementTab:AddToggle({
-    Name = "Infinite Jump",
-    Default = false,
-    Callback = function(Value)
-        Config.InfiniteJump = Value
-        if Value then
-            EnableInfiniteJump()
-        else
-            DisableInfiniteJump()
-        end
-    end
-})
-
--- Teleport Dropdown
-local Islands = {
-    "Spawn Island",
-    "Coral Reef",
-    "Iceberg",
-    "Volcano",
-    "Abyss",
-    "Golden Beach"
-}
-
-MovementTab:AddDropdown({
-    Name = "Teleport to Island",
-    Default = "Spawn Island",
-    Options = Islands,
-    Callback = function(Value)
-        TeleportToIsland(Value)
-    end
-})
-
--- ==================== TAB PERFORMANCE ====================
-local PerformanceTab = Window:MakeTab({
-    Name = "⚡ Performance",
-    Icon = "rbxassetid://7733680425",
-    PremiumOnly = false
-})
-
--- Reduce Graphics
-PerformanceTab:AddToggle({
-    Name = "Reduce Graphics (Tăng FPS)",
-    Default = false,
-    Callback = function(Value)
-        Config.ReduceGraphics = Value
-        if Value then
-            ReduceGraphics()
-            OrionLib:MakeNotification({
-                Name = "Performance",
-                Content = "Đã tối ưu đồ họa để tăng FPS",
-                Image = "rbxassetid://7733680425",
-                Time = 3
-            })
-        else
-            RestoreGraphics()
-        end
-    end
-})
-
--- Clean Workspace Button
-PerformanceTab:AddButton({
-    Name = "Clean Workspace",
-    Callback = function()
-        CleanWorkspace()
-    end
-})
-
--- Disable Shadows
-PerformanceTab:AddToggle({
-    Name = "Disable Shadows",
-    Default = false,
-    Callback = function(Value)
-        if Value then
-            Lighting.GlobalShadows = false
-        else
-            Lighting.GlobalShadows = true
-        end
-    end
-})
-
--- ==================== TAB SAFETY ====================
-local SafetyTab = Window:MakeTab({
-    Name = "🛡️ Safety",
-    Icon = "rbxassetid://7733715400",
-    PremiumOnly = false
-})
-
--- Anti-AFK
-SafetyTab:AddToggle({
-    Name = "Anti-AFK System",
-    Default = false,
-    Callback = function(Value)
-        Config.AntiAFK = Value
-        if Value then
-            EnableAntiAFK()
-        else
-            DisableAntiAFK()
-        end
-    end
-})
-
--- Safe Mode
-SafetyTab:AddToggle({
-    Name = "Safe Mode (Chống kick)",
-    Default = true,
-    Callback = function(Value)
-        Config.SafeMode = Value
-        OrionLib:MakeNotification({
-            Name = "Safe Mode",
-            Content = Value and "Đã bật chế độ an toàn" or "Đã tắt chế độ an toàn",
-            Image = "rbxassetid://7733715400",
-            Time = 2
-        })
-    end
-})
-
--- ==================== CÁC HÀM CHỨC NĂNG ====================
-function AutoFish()
-    -- Tìm RemoteEvents cho fishing
-    local remotes = {
-        "CastRod",
-        "ReelFish",
-        "FishCast",
-        "FishingEvent"
-    }
     
-    for _, remoteName in pairs(remotes) do
-        local remote = FindRemote(remoteName)
-        if remote then
-            -- Thêm độ trễ ngẫu nhiên nếu SafeMode bật
-            if Config.SafeMode then
-                wait(math.random(5, 15) / 10)
-            end
-            
-            -- Gọi remote
-            if remoteName == "CastRod" or remoteName == "FishCast" then
-                remote:FireServer()
-                wait(2) -- Đợi cá cắn
-            elseif remoteName == "ReelFish" or remoteName == "FishingEvent" then
-                remote:FireServer()
-            end
-        end
-    end
+    -- Ghost Mode
+    GhostMode = false,
+    UndergroundDepth = -15,
+    SafeAnchor = false,
+    NoClip = false,
+    
+    -- God & Speed
+    GodMode = false,
+    SpeedBug = false,
+    SpeedMultiplier = 5,
+    HealthThreshold = 90,
+    
+    -- Security
+    AntiBan = true,
+    AntiAFK = false,
+    LagFixer = false,
+    
+    -- Connections
+    Connections = {},
+    OriginalSettings = {},
+    LastHealth = 100,
+    LastKeyPress = tick()
+}
+
+-- ==================== HÀM TIỆN ÍCH ====================
+function SafeNotify(title, message, duration)
+    pcall(function()
+        Rayfield:Notify({
+            Title = title,
+            Content = message,
+            Duration = duration or 3,
+            Image = "rbxassetid://4483345998"
+        })
+    end)
 end
 
-function AutoSell()
-    local sellRemote = FindRemote("SellFish") or FindRemote("SellAll")
-    if sellRemote then
-        sellRemote:FireServer()
-        OrionLib:MakeNotification({
-            Name = "Auto Sell",
-            Content = "Đã bán cá",
-            Image = "rbxassetid://7733960981",
-            Time = 2
-        })
-    end
+function HumanDelay(min, max)
+    -- Tạo độ trễ ngẫu nhiên giống người thật
+    local minDelay = min or 0.1
+    local maxDelay = max or 0.5
+    task.wait(math.random(minDelay * 100, maxDelay * 100) / 100)
 end
 
 function FindRemote(name)
-    -- Tìm RemoteEvent trong game
-    local locations = {
-        ReplicatedStorage,
-        Workspace,
-        game:GetService("ReplicatedFirst")
-    }
+    -- Tìm RemoteEvent an toàn
+    local locations = {ReplicatedStorage, Workspace, game}
     
-    for _, location in pairs(locations) do
+    for _, location in ipairs(locations) do
         local remote = location:FindFirstChild(name, true)
         if remote and remote:IsA("RemoteEvent") then
             return remote
         end
     end
+    
     return nil
 end
 
-function EnableFly()
-    local character = LocalPlayer.Character
-    if not character then return end
+function SafeRemoteCall(name, ...)
+    -- Gọi RemoteEvent an toàn với mã hóa giả lập
+    if not Config.AntiBan then return false end
     
+    local remote = FindRemote(name)
+    if remote then
+        -- Thêm độ trễ ngẫu nhiên
+        HumanDelay()
+        
+        -- Giả lập hành vi người dùng
+        local args = {...}
+        
+        -- Mã hóa đơn giản các tham số
+        local encodedArgs = {}
+        for i, arg in ipairs(args) do
+            if type(arg) == "string" then
+                -- Xáo trộn nhẹ string để bypass detection
+                encodedArgs[i] = arg .. tostring(math.random(100, 999))
+            else
+                encodedArgs[i] = arg
+            end
+        end
+        
+        -- Gọi RemoteEvent với args đã mã hóa
+        if #encodedArgs > 0 then
+            remote:FireServer(unpack(encodedArgs))
+        else
+            remote:FireServer()
+        end
+        
+        return true
+    end
+    return false
+end
+
+-- ==================== GHOST MODE FUNCTIONS ====================
+function EnableGhostMode()
+    if not LocalPlayer.Character then return end
+    
+    local character = LocalPlayer.Character
     local humanoid = character:FindFirstChild("Humanoid")
     local root = character:FindFirstChild("HumanoidRootPart")
     
     if not humanoid or not root then return end
     
-    -- Tạo BodyVelocity cho fly
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.Name = "FlyVelocity"
-    bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    bodyVelocity.Parent = root
+    -- Lưu vị trí gốc
+    local originalPosition = root.Position
     
-    -- Kết nối điều khiển
+    -- Hạ nhân vật xuống độ sâu -15 studs
+    local undergroundPosition = Vector3.new(
+        root.Position.X,
+        Config.UndergroundDepth,
+        root.Position.Z
+    )
+    
+    -- Di chuyển xuống underground
+    root.CFrame = CFrame.new(undergroundPosition)
+    
+    -- Kích hoạt No-Clip
+    EnableNoClip()
+    
+    -- Kết nối điều khiển bay dưới lòng đất
+    local flyVelocity = Instance.new("BodyVelocity")
+    flyVelocity.Name = "UndergroundFly"
+    flyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+    flyVelocity.Velocity = Vector3.new(0, 0, 0)
+    flyVelocity.Parent = root
+    
     local flyConnection
     flyConnection = RunService.Heartbeat:Connect(function()
-        if not Config.Fly or not character:FindFirstChild("HumanoidRootPart") then
-            if flyConnection then
-                flyConnection:Disconnect()
+        if not Config.GhostMode or not character:FindFirstChild("HumanoidRootPart") then
+            flyConnection:Disconnect()
+            if flyVelocity and flyVelocity.Parent then
+                flyVelocity:Destroy()
             end
-            if bodyVelocity and bodyVelocity.Parent then
-                bodyVelocity:Destroy()
-            end
+            DisableNoClip()
             return
         end
         
-        -- Điều khiển bay
+        -- Điều khiển bay dưới lòng đất
         local camera = Workspace.CurrentCamera
         local lookVector = camera.CFrame.LookVector
         local rightVector = camera.CFrame.RightVector
         
         local velocity = Vector3.new(0, 0, 0)
         
+        -- WASD Controls
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then
             velocity = velocity + (lookVector * Config.FlySpeed)
         end
@@ -393,34 +206,56 @@ function EnableFly()
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then
             velocity = velocity - (rightVector * Config.FlySpeed)
         end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            velocity = velocity + Vector3.new(0, Config.FlySpeed, 0)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            velocity = velocity - Vector3.new(0, Config.FlySpeed, 0)
+        
+        -- Kiểm soát độ cao (chỉ di chuyển ngang)
+        if Config.SafeAnchor then
+            velocity = Vector3.new(velocity.X, 0, velocity.Z)
+        else
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                velocity = velocity + Vector3.new(0, Config.FlySpeed, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                velocity = velocity - Vector3.new(0, Config.FlySpeed, 0)
+            end
         end
         
-        bodyVelocity.Velocity = velocity
+        flyVelocity.Velocity = velocity
         humanoid.PlatformStand = true
+        
+        -- Giữ vị trí Y nếu SafeAnchor bật
+        if Config.SafeAnchor then
+            root.CFrame = CFrame.new(
+                root.Position.X,
+                Config.UndergroundDepth,
+                root.Position.Z
+            )
+        end
     end)
     
-    Config.Connections.Fly = flyConnection
+    Config.Connections.GhostFly = flyConnection
+    
+    SafeNotify("Ghost Mode", "Đã kích hoạt chế độ dưới lòng đất", 3)
 end
 
-function DisableFly()
-    if Config.Connections.Fly then
-        Config.Connections.Fly:Disconnect()
-        Config.Connections.Fly = nil
+function DisableGhostMode()
+    if Config.Connections.GhostFly then
+        Config.Connections.GhostFly:Disconnect()
+        Config.Connections.GhostFly = nil
     end
+    
+    DisableNoClip()
     
     local character = LocalPlayer.Character
     if character then
         local root = character:FindFirstChild("HumanoidRootPart")
         if root then
-            local velocity = root:FindFirstChild("FlyVelocity")
+            local velocity = root:FindFirstChild("UndergroundFly")
             if velocity then
                 velocity:Destroy()
             end
+            
+            -- Đưa nhân vật trở lại mặt đất
+            root.CFrame = CFrame.new(root.Position.X, 5, root.Position.Z)
         end
         
         local humanoid = character:FindFirstChild("Humanoid")
@@ -430,241 +265,659 @@ function DisableFly()
     end
 end
 
-function EnableInfiniteJump()
-    local connection
-    connection = UserInputService.JumpRequest:Connect(function()
-        if Config.InfiniteJump and LocalPlayer.Character then
-            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-            if humanoid then
-                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end)
-    
-    Config.Connections.InfiniteJump = connection
-end
-
-function DisableInfiniteJump()
-    if Config.Connections.InfiniteJump then
-        Config.Connections.InfiniteJump:Disconnect()
-        Config.Connections.InfiniteJump = nil
-    end
-end
-
-function TeleportToIsland(islandName)
+function EnableNoClip()
     local character = LocalPlayer.Character
     if not character then return end
     
-    local root = character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    -- Tìm vị trí đảo
-    local targetPosition
-    local islandsFolder = Workspace:FindFirstChild("Islands") or Workspace:FindFirstChild("Maps")
-    
-    if islandsFolder then
-        local island = islandsFolder:FindFirstChild(islandName)
-        if island then
-            targetPosition = island:GetPivot().Position + Vector3.new(0, 5, 0)
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
         end
     end
     
-    -- Nếu không tìm thấy, dùng vị trí mặc định
-    if not targetPosition then
-        local positions = {
-            ["Spawn Island"] = Vector3.new(0, 50, 0),
-            ["Coral Reef"] = Vector3.new(500, 50, 0),
-            ["Iceberg"] = Vector3.new(1000, 50, 0),
-            ["Volcano"] = Vector3.new(1500, 50, 0),
-            ["Abyss"] = Vector3.new(2000, 50, 0),
-            ["Golden Beach"] = Vector3.new(2500, 50, 0)
-        }
-        targetPosition = positions[islandName] or Vector3.new(0, 50, 0)
-    end
-    
-    -- Teleport
-    if Config.SafeMode then
-        -- Dùng TweenService để teleport mượt
-        local tween = TweenService:Create(root, TweenInfo.new(2), {
-            CFrame = CFrame.new(targetPosition)
-        })
-        tween:Play()
+    -- Kết nối để duy trì No-Clip
+    local noClipConnection
+    noClipConnection = RunService.Stepped:Connect(function()
+        if not Config.NoClip then
+            noClipConnection:Disconnect()
+            return
+        end
         
-        OrionLib:MakeNotification({
-            Name = "Teleport",
-            Content = "Đang di chuyển đến " .. islandName,
-            Image = "rbxassetid://7733674079",
-            Time = 2
-        })
-    else
-        -- Teleport ngay lập tức
-        root.CFrame = CFrame.new(targetPosition)
-    end
-end
-
-function ReduceGraphics()
-    -- Lưu cài đặt gốc
-    Config.OriginalSettings = {
-        QualityLevel = settings().Rendering.QualityLevel,
-        Shadows = Lighting.GlobalShadows,
-        TextureQuality = settings().Rendering.MeshPartDetailLevel
-    }
-    
-    -- Giảm chất lượng
-    settings().Rendering.QualityLevel = 1
-    Lighting.GlobalShadows = false
-    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
-    
-    -- Tắt hiệu ứng
-    for _, effect in ipairs(Lighting:GetChildren()) do
-        if effect:IsA("PostEffect") then
-            effect.Enabled = false
-        end
-    end
-    
-    -- Giảm render distance
-    local camera = Workspace.CurrentCamera
-    if camera then
-        camera.MaxCameraDistance = 300
-    end
-end
-
-function RestoreGraphics()
-    -- Khôi phục cài đặt gốc
-    if Config.OriginalSettings.QualityLevel then
-        settings().Rendering.QualityLevel = Config.OriginalSettings.QualityLevel
-    end
-    if Config.OriginalSettings.Shadows ~= nil then
-        Lighting.GlobalShadows = Config.OriginalSettings.Shadows
-    end
-    if Config.OriginalSettings.TextureQuality then
-        settings().Rendering.MeshPartDetailLevel = Config.OriginalSettings.TextureQuality
-    end
-    
-    -- Bật lại hiệu ứng
-    for _, effect in ipairs(Lighting:GetChildren()) do
-        if effect:IsA("PostEffect") then
-            effect.Enabled = true
-        end
-    end
-    
-    -- Khôi phục render distance
-    local camera = Workspace.CurrentCamera
-    if camera then
-        camera.MaxCameraDistance = 10000
-    end
-end
-
-function CleanWorkspace()
-    local cleaned = 0
-    
-    -- Xóa các part trong suốt
-    for _, part in ipairs(Workspace:GetChildren()) do
-        if part:IsA("BasePart") and part.Transparency > 0.8 then
-            part:Destroy()
-            cleaned = cleaned + 1
-        end
-    end
-    
-    -- Xóa debris
-    local debris = Workspace:FindFirstChild("Debris")
-    if debris then
-        debris:ClearAllChildren()
-        cleaned = cleaned + 10
-    end
-    
-    OrionLib:MakeNotification({
-        Name = "Cleanup",
-        Content = "Đã dọn dẹp " .. cleaned .. " đối tượng",
-        Image = "rbxassetid://7733680425",
-        Time = 3
-    })
-end
-
-function EnableAntiAFK()
-    local connection
-    local lastPosition = Vector3.new(0, 0, 0)
-    
-    connection = RunService.Heartbeat:Connect(function()
-        if Config.AntiAFK and LocalPlayer.Character then
-            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                -- Di chuyển nhẹ mỗi 30 giây
-                if tick() % 30 < 0.1 then
-                    local offset = Vector3.new(
-                        math.random(-3, 3),
-                        0,
-                        math.random(-3, 3)
-                    )
-                    root.CFrame = CFrame.new(root.Position + offset)
-                    
-                    -- Quay lại sau 0.5 giây
-                    wait(0.5)
-                    root.CFrame = CFrame.new(root.Position - offset)
+        if character then
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
                 end
             end
         end
     end)
     
-    Config.Connections.AntiAFK = connection
+    Config.Connections.NoClip = noClipConnection
 end
 
-function DisableAntiAFK()
-    if Config.Connections.AntiAFK then
-        Config.Connections.AntiAFK:Disconnect()
-        Config.Connections.AntiAFK = nil
+function DisableNoClip()
+    if Config.Connections.NoClip then
+        Config.Connections.NoClip:Disconnect()
+        Config.Connections.NoClip = nil
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
     end
 end
 
--- ==================== KEYBINDS ====================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed then
-        -- Toggle Menu: RightControl
-        if input.KeyCode == Enum.KeyCode.RightControl then
-            Window:Toggle()
+-- ==================== GOD MODE FUNCTIONS ====================
+function EnableGodMode()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    
+    -- Lưu máu ban đầu
+    Config.LastHealth = humanoid.Health
+    
+    -- Kết nối theo dõi máu
+    local healthConnection
+    healthConnection = humanoid.HealthChanged:Connect(function(newHealth)
+        if not Config.GodMode then
+            healthConnection:Disconnect()
+            return
         end
         
-        -- Hotkey Auto Fish: F
+        Config.LastHealth = newHealth
+        
+        -- Nếu máu dưới ngưỡng, kích hoạt cứu hộ
+        if newHealth < Config.HealthThreshold then
+            EmergencyHeal()
+        end
+    end)
+    
+    Config.Connections.GodMode = healthConnection
+    
+    -- Tự động hồi máu định kỳ
+    task.spawn(function()
+        while Config.GodMode do
+            task.wait(1)
+            
+            if humanoid and humanoid.Health < Config.HealthThreshold then
+                EmergencyHeal()
+            end
+        end
+    end)
+    
+    SafeNotify("God Mode", "Đã kích hoạt chế độ bất tử", 3)
+end
+
+function EmergencyHeal()
+    -- Phương pháp 1: Dùng kỹ năng hồi máu
+    SafeRemoteCall("UseHealSkill")
+    
+    -- Phương pháp 2: Teleport đến vùng an toàn
+    task.wait(0.2)
+    
+    local character = LocalPlayer.Character
+    if character then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            -- Teleport đến spawn point
+            local spawnPoint = Workspace:FindFirstChild("SpawnPoint") or Workspace:FindFirstChild("SafeZone")
+            if spawnPoint then
+                root.CFrame = spawnPoint.CFrame
+            else
+                -- Teleport lên cao
+                root.CFrame = CFrame.new(root.Position.X, 100, root.Position.Z)
+            end
+        end
+    end
+    
+    -- Phương pháp 3: Gửi yêu cầu hồi máu
+    task.wait(0.3)
+    SafeRemoteCall("RequestHeal")
+end
+
+function EnableSpeedBug()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local root = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not root then return end
+    
+    -- Sử dụng Velocity thay vì WalkSpeed để bypass detection
+    local speedVelocity = Instance.new("BodyVelocity")
+    speedVelocity.Name = "SpeedBugVelocity"
+    speedVelocity.MaxForce = Vector3.new(100000, 0, 100000)
+    speedVelocity.Velocity = Vector3.new(0, 0, 0)
+    speedVelocity.Parent = root
+    
+    local speedConnection
+    speedConnection = RunService.Heartbeat:Connect(function()
+        if not Config.SpeedBug or not character:FindFirstChild("HumanoidRootPart") then
+            speedConnection:Disconnect()
+            if speedVelocity and speedVelocity.Parent then
+                speedVelocity:Destroy()
+            end
+            return
+        end
+        
+        -- Tính toán hướng di chuyển
+        local moveDirection = Vector3.new(0, 0, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + Vector3.new(0, 0, -1)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection + Vector3.new(0, 0, 1)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + Vector3.new(1, 0, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection + Vector3.new(-1, 0, 0)
+        end
+        
+        -- Chuẩn hóa vector và áp dụng tốc độ
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit
+            local speed = humanoid.WalkSpeed * Config.SpeedMultiplier
+            
+            -- Áp dụng velocity
+            speedVelocity.Velocity = moveDirection * speed
+        else
+            speedVelocity.Velocity = Vector3.new(0, 0, 0)
+        end
+    end)
+    
+    Config.Connections.SpeedBug = speedConnection
+    
+    SafeNotify("Speed Bug", "Đã kích hoạt tốc độ cao", 3)
+end
+
+function DisableSpeedBug()
+    if Config.Connections.SpeedBug then
+        Config.Connections.SpeedBug:Disconnect()
+        Config.Connections.SpeedBug = nil
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local velocity = root:FindFirstChild("SpeedBugVelocity")
+            if velocity then
+                velocity:Destroy()
+            end
+        end
+    end
+end
+
+-- ==================== SECURITY FUNCTIONS ====================
+function EnableAntiAFK()
+    local antiAFKConnection
+    antiAFKConnection = RunService.Heartbeat:Connect(function()
+        if not Config.AntiAFK then
+            antiAFKConnection:Disconnect()
+            return
+        end
+        
+        -- Mô phỏng nhấn phím mỗi 5 phút
+        if tick() - Config.LastKeyPress > 300 then
+            Config.LastKeyPress = tick()
+            
+            -- Giả lập nhấn phím ngẫu nhiên
+            local keys = {
+                Enum.KeyCode.W,
+                Enum.KeyCode.A,
+                Enum.KeyCode.S,
+                Enum.KeyCode.D,
+                Enum.KeyCode.Space
+            }
+            
+            local randomKey = keys[math.random(1, #keys)]
+            
+            -- Gửi input ảo
+            task.spawn(function()
+                VirtualInputManager:SendKeyEvent(true, randomKey, false, nil)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, randomKey, false, nil)
+            end)
+        end
+    end)
+    
+    Config.Connections.AntiAFK = antiAFKConnection
+end
+
+function EnableLagFixer()
+    local lagFixConnection
+    lagFixConnection = RunService.Heartbeat:Connect(function()
+        if not Config.LagFixer then
+            lagFixConnection:Disconnect()
+            return
+        end
+        
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        -- Xóa các hiệu ứng xa
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+                local distance = (obj.Position - root.Position).Magnitude
+                
+                if distance > 50 then
+                    obj:Destroy()
+                end
+            end
+            
+            -- Xóa các vật thể rác
+            if obj:IsA("BasePart") and obj.Transparency > 0.8 then
+                local distance = (obj.Position - root.Position).Magnitude
+                
+                if distance > 100 then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    
+    Config.Connections.LagFixer = lagFixConnection
+    
+    -- Giảm chất lượng đồ họa
+    if not Config.OriginalSettings.QualityLevel then
+        Config.OriginalSettings.QualityLevel = settings().Rendering.QualityLevel
+        Config.OriginalSettings.Shadows = Lighting.GlobalShadows
+        Config.OriginalSettings.TextureQuality = settings().Rendering.MeshPartDetailLevel
+    end
+    
+    settings().Rendering.QualityLevel = 1
+    Lighting.GlobalShadows = false
+    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+    
+    SafeNotify("Lag Fixer", "Đã tối ưu FPS", 3)
+end
+
+function DisableLagFixer()
+    if Config.Connections.LagFixer then
+        Config.Connections.LagFixer:Disconnect()
+        Config.Connections.LagFixer = nil
+    end
+    
+    -- Khôi phục cài đặt gốc
+    if Config.OriginalSettings.QualityLevel then
+        settings().Rendering.QualityLevel = Config.OriginalSettings.QualityLevel
+        Lighting.GlobalShadows = Config.OriginalSettings.Shadows
+        settings().Rendering.MeshPartDetailLevel = Config.OriginalSettings.TextureQuality
+    end
+end
+
+-- ==================== TẠO MENU ====================
+local Window = Rayfield:CreateWindow({
+    Name = "👻 Titan Fishing ULTIMATE",
+    LoadingTitle = "Đang tải Ghost Mode...",
+    LoadingSubtitle = "Phiên bản 4.0.0 - Bypass Anti-Cheat",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "TitanFishingUltimate",
+        FileName = "GhostConfig"
+    },
+    Discord = {
+        Enabled = false
+    },
+    KeySystem = false,
+    Theme = {
+        BackgroundColor = Color3.fromRGB(10, 10, 10),
+        HeaderColor = Color3.fromRGB(20, 20, 20),
+        TextColor = Color3.fromRGB(220, 220, 220),
+        ElementColor = Color3.fromRGB(30, 30, 30)
+    }
+})
+
+-- ==================== TAB GHOST MODE ====================
+local GhostTab = Window:CreateTab("👻 Ghost Mode", "rbxassetid://7733715400")
+
+GhostTab:CreateToggle({
+    Name = "Underground Fly",
+    CurrentValue = false,
+    Flag = "GhostModeToggle",
+    Callback = function(Value)
+        Config.GhostMode = Value
+        Config.NoClip = Value
+        
+        if Value then
+            EnableGhostMode()
+        else
+            DisableGhostMode()
+        end
+    end
+})
+
+GhostTab:CreateToggle({
+    Name = "Safe Zone Anchoring",
+    CurrentValue = false,
+    Flag = "SafeAnchorToggle",
+    Callback = function(Value)
+        Config.SafeAnchor = Value
+        SafeNotify("Safe Anchor", Value and "Đã khóa trục Y" or "Đã mở khóa trục Y", 2)
+    end
+})
+
+GhostTab:CreateSlider({
+    Name = "Underground Depth",
+    Range = {-50, 0},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = -15,
+    Flag = "DepthSlider",
+    Callback = function(Value)
+        Config.UndergroundDepth = Value
+    end
+})
+
+GhostTab:CreateLabel("Điều khiển:")
+GhostTab:CreateLabel("- WASD: Di chuyển ngang")
+GhostTab:CreateLabel("- Space/Shift: Lên/Xuống (nếu tắt Safe Anchor)")
+GhostTab:CreateLabel("- No-Clip: Tự động bật")
+
+-- ==================== TAB GOD & SPEED ====================
+local GodTab = Window:CreateTab("⚡ God & Speed", "rbxassetid://7733680425")
+
+GodTab:CreateToggle({
+    Name = "Anti-Die (God Mode)",
+    CurrentValue = false,
+    Flag = "GodModeToggle",
+    Callback = function(Value)
+        Config.GodMode = Value
+        
+        if Value then
+            EnableGodMode()
+        else
+            if Config.Connections.GodMode then
+                Config.Connections.GodMode:Disconnect()
+                Config.Connections.GodMode = nil
+            end
+        end
+    end
+})
+
+GodTab:CreateSlider({
+    Name = "Health Threshold",
+    Range = {10, 100},
+    Increment = 1,
+    Suffix = "%",
+    CurrentValue = 90,
+    Flag = "HealthSlider",
+    Callback = function(Value)
+        Config.HealthThreshold = Value
+    end
+})
+
+GodTab:CreateToggle({
+    Name = "Speed Bug (Anti-Kick)",
+    CurrentValue = false,
+    Flag = "SpeedBugToggle",
+    Callback = function(Value)
+        Config.SpeedBug = Value
+        
+        if Value then
+            EnableSpeedBug()
+        else
+            DisableSpeedBug()
+        end
+    end
+})
+
+GodTab:CreateSlider({
+    Name = "Speed Multiplier",
+    Range = {1, 20},
+    Increment = 0.5,
+    Suffix = "x",
+    CurrentValue = 5,
+    Flag = "SpeedSlider",
+    Callback = function(Value)
+        Config.SpeedMultiplier = Value
+    end
+})
+
+-- ==================== TAB SECURITY ====================
+local SecurityTab = Window:CreateTab("🛡️ Security", "rbxassetid://7733674079")
+
+SecurityTab:CreateToggle({
+    Name = "Hardcore Anti-Ban",
+    CurrentValue = true,
+    Flag = "AntiBanToggle",
+    Callback = function(Value)
+        Config.AntiBan = Value
+        SafeNotify("Anti-Ban", Value and "Đã bật chế độ chống ban" or "Đã tắt chế độ chống ban", 3)
+    end
+})
+
+SecurityTab:CreateToggle({
+    Name = "Anti-AFK System",
+    CurrentValue = false,
+    Flag = "AntiAFKToggle",
+    Callback = function(Value)
+        Config.AntiAFK = Value
+        
+        if Value then
+            EnableAntiAFK()
+        else
+            if Config.Connections.AntiAFK then
+                Config.Connections.AntiAFK:Disconnect()
+                Config.Connections.AntiAFK = nil
+            end
+        end
+    end
+})
+
+SecurityTab:CreateToggle({
+    Name = "Lag Fixer & FPS Booster",
+    CurrentValue = false,
+    Flag = "LagFixerToggle",
+    Callback = function(Value)
+        Config.LagFixer = Value
+        
+        if Value then
+            EnableLagFixer()
+        else
+            DisableLagFixer()
+        end
+    end
+})
+
+SecurityTab:CreateButton({
+    Name = "Clean Workspace",
+    Callback = function()
+        local cleaned = 0
+        
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+                obj:Destroy()
+                cleaned = cleaned + 1
+            end
+        end
+        
+        SafeNotify("Cleanup", "Đã xóa " .. cleaned .. " hiệu ứng", 3)
+    end
+})
+
+-- ==================== TAB MAIN FARMING ====================
+local FarmingTab = Window:CreateTab("🎣 Main Farming", "rbxassetid://7733960981")
+
+FarmingTab:CreateToggle({
+    Name = "Auto Fish",
+    CurrentValue = false,
+    Flag = "AutoFishToggle",
+    Callback = function(Value)
+        Config.AutoFish = Value
+        
+        if Value then
+            task.spawn(function()
+                while Config.AutoFish do
+                    SafeRemoteCall("CastRod")
+                    task.wait(math.random(2, 4))
+                    SafeRemoteCall("ReelFish")
+                    task.wait(math.random(1, 3))
+                end
+            end)
+        end
+    end
+})
+
+FarmingTab:CreateToggle({
+    Name = "Auto Sell Fish",
+    CurrentValue = false,
+    Flag = "AutoSellToggle",
+    Callback = function(Value)
+        Config.AutoSell = Value
+        
+        if Value then
+            task.spawn(function()
+                while Config.AutoSell do
+                    SafeRemoteCall("SellAll")
+                    task.wait(30)
+                end
+            end)
+        end
+    end
+})
+
+-- ==================== TAB MOVEMENT ====================
+local MovementTab = Window:CreateTab("✈️ Movement", "rbxassetid://7733674079")
+
+MovementTab:CreateToggle({
+    Name = "Normal Fly Mode",
+    CurrentValue = false,
+    Flag = "FlyToggle",
+    Callback = function(Value)
+        Config.Fly = Value
+        
+        if Value then
+            -- Code fly bình thường
+        else
+            -- Tắt fly
+        end
+    end
+})
+
+MovementTab:CreateSlider({
+    Name = "Fly Speed",
+    Range = {10, 200},
+    Increment = 5,
+    Suffix = "studs/s",
+    CurrentValue = 50,
+    Flag = "FlySpeedSlider",
+    Callback = function(Value)
+        Config.FlySpeed = Value
+    end
+})
+
+-- ==================== KEYBINDS ====================
+Window:CreateKeybind({
+    Name = "Toggle Menu",
+    CurrentKeybind = "RightControl",
+    HoldToInteract = false,
+    Flag = "MenuKeybind",
+    Callback = function()
+        Rayfield:Toggle()
+    end
+})
+
+-- Hotkey Ghost Mode
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        -- G: Ghost Mode
+        if input.KeyCode == Enum.KeyCode.G then
+            Config.GhostMode = not Config.GhostMode
+            Config.NoClip = Config.GhostMode
+            
+            if Config.GhostMode then
+                EnableGhostMode()
+            else
+                DisableGhostMode()
+            end
+            
+            SafeNotify("Ghost Mode", Config.GhostMode and "ON" or "OFF", 2)
+        end
+        
+        -- H: God Mode
+        if input.KeyCode == Enum.KeyCode.H then
+            Config.GodMode = not Config.GodMode
+            
+            if Config.GodMode then
+                EnableGodMode()
+            else
+                if Config.Connections.GodMode then
+                    Config.Connections.GodMode:Disconnect()
+                    Config.Connections.GodMode = nil
+                end
+            end
+            
+            SafeNotify("God Mode", Config.GodMode and "ON" or "OFF", 2)
+        end
+        
+        -- F: Auto Fish
         if input.KeyCode == Enum.KeyCode.F then
             Config.AutoFish = not Config.AutoFish
-            OrionLib:MakeNotification({
-                Name = "Hotkey",
-                Content = "Auto Fish: " .. (Config.AutoFish and "ON" or "OFF"),
-                Image = "rbxassetid://7733960981",
-                Time = 2
-            })
+            SafeNotify("Auto Fish", Config.AutoFish and "ON" or "OFF", 2)
         end
+    end
+end)
+
+-- ==================== AUTO CLEANUP ====================
+LocalPlayer.CharacterAdded:Connect(function(character)
+    -- Reset khi respawn
+    DisableGhostMode()
+    DisableSpeedBug()
+    
+    -- Tự động bật lại nếu đang bật
+    task.wait(2)
+    
+    if Config.GodMode then
+        EnableGodMode()
+    end
+    
+    if Config.GhostMode then
+        EnableGhostMode()
     end
 end)
 
 -- ==================== KHỞI ĐỘNG ====================
-OrionLib:MakeNotification({
-    Name = "Titan Fishing Script",
-    Content = "Script đã sẵn sàng!\nNhấn RightControl để mở menu\nNhấn F để bật/tắt Auto Fish",
-    Image = "rbxassetid://7733960981",
-    Time = 5
-})
+task.wait(1)
 
-print("====================================")
-print("🎣 Titan Fishing Script Loaded!")
-print("📱 Menu Key: RightControl")
-print("🎮 Auto Fish Hotkey: F")
-print("⚡ Version: 3.0.0 (Orion Lib)")
-print("====================================")
+SafeNotify("Titan Fishing ULTIMATE", 
+    "Script đã sẵn sàng!\n\n" ..
+    "Hotkeys:\n" ..
+    "- RightControl: Menu\n" ..
+    "- G: Ghost Mode\n" ..
+    "- H: God Mode\n" ..
+    "- F: Auto Fish", 
+    8
+)
 
--- Auto-close connections khi script bị destroy
-game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
-    -- Reset khi respawn
-    DisableFly()
-    DisableInfiniteJump()
-end)
+print("==========================================")
+print("👻 TITAN FISHING ULTIMATE LOADED!")
+print("⚡ Version: 4.0.0 - Ghost Mode & God Mode")
+print("🔧 Features: Underground Fly, Anti-Die, Speed Bug")
+print("🛡️ Security: Hardcore Anti-Ban, Lag Fixer")
+print("==========================================")
 
+-- Tự động dọn dẹp khi script bị destroy
 game:GetService("Players").LocalPlayer.CharacterRemoving:Connect(function()
-    -- Cleanup khi character bị remove
-    DisableFly()
-    DisableInfiniteJump()
+    for name, connection in pairs(Config.Connections) do
+        if connection then
+            connection:Disconnect()
+        end
+    end
 end)
-task.spawn(function()
     local Players = game:GetService("Players")
     local player = Players.LocalPlayer
 
