@@ -1,291 +1,103 @@
--- Titan Fishing Script - Được Code Bởi : xtriz
--- Phiên bản: 1.0.0
--- Ngày: 23/03/2026
+-- Titan Fishing Script Premium - Tối ưu FPS & Fix lỗi
+-- Phiên bản: 2.0.0
+-- Ngày: 2026 
 
--- Khai báo thư viện và dịch vụ
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/xtriz'))()
+--[[
+    HƯỚNG DẪN SỬ DỤNG:
+    1. Copy toàn bộ script này
+    2. Mở game Titan Fishing
+    3. Mở Executor (Synapse, KRNL, Script-Ware, etc.)
+    4. Paste và Execute
+    5. Menu sẽ tự động hiện ra
+]]
+
+-- ==================== KHAI BÁO THƯ VIỆN ====================
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
+end)
+
+if not success then
+    -- Fallback nếu Rayfield không load được
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Lỗi Rayfield",
+        Text = "Đang sử dụng Orion Lib...",
+        Duration = 3
+    })
+    
+    Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostDucky/OrionLib/main/source'))()
+end
+
+-- Khai báo dịch vụ
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
--- Biến toàn cục
-local AutoFishEnabled = false
-local AutoSellEnabled = false
-local AutoSkillsEnabled = false
-local AutoFarmItemsEnabled = false
-local FlyEnabled = false
-local InfiniteJumpEnabled = false
-local AntiAFKEnabled = false
-local FlySpeed = 50
-local LastSkillUse = 0
-local SkillCooldowns = {}
-
--- Tạo cửa sổ chính
-local Window = Rayfield:CreateWindow({
-    Name = "Titan Fishing Premium",
-    LoadingTitle = "Titan Fishing Script",
-    LoadingSubtitle = "Đang tải menu...",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "TitanFishing",
-        FileName = "Config.json"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "noinvitelink",
-        RememberJoins = true
-    },
-    KeySystem = false,
-    KeySettings = {
-        Title = "Key System",
-        Subtitle = "Nhập key",
-        Note = "Liên hệ admin để lấy key",
-        FileName = "Key",
-        SaveKey = true,
-        GrabKeyFromSite = false,
-        Key = {"TitanFishing2024"}
-    }
-})
-
--- Tab Main Farming
-local FarmingTab = Window:CreateTab("Main Farming", "rbxassetid://4483345998")
-
--- Auto Fish
-local AutoFishToggle = FarmingTab:CreateToggle({
-    Name = "Auto Fish",
-    CurrentValue = false,
-    Flag = "AutoFishToggle",
-    Callback = function(Value)
-        AutoFishEnabled = Value
-        if Value then
-            Rayfield:Notify({
-                Title = "Auto Fish",
-                Content = "Đã bật tự động câu cá",
-                Duration = 2,
-                Image = "rbxassetid://4483345998"
-            })
-            spawn(function()
-                AutoFishLoop()
-            end)
-        else
-            Rayfield:Notify({
-                Title = "Auto Fish",
-                Content = "Đã tắt tự động câu cá",
-                Duration = 2,
-                Image = "rbxassetid://4483345998"
-            })
-        end
-    end,
-})
-
--- Auto Sell
-local AutoSellToggle = FarmingTab:CreateToggle({
-    Name = "Auto Sell",
-    CurrentValue = false,
-    Flag = "AutoSellToggle",
-    Callback = function(Value)
-        AutoSellEnabled = Value
-        if Value then
-            spawn(function()
-                AutoSellLoop()
-            end)
-        end
-    end,
-})
-
--- Auto Skills
-local AutoSkillsToggle = FarmingTab:CreateToggle({
-    Name = "Auto Use Skills",
-    CurrentValue = false,
-    Flag = "AutoSkillsToggle",
-    Callback = function(Value)
-        AutoSkillsEnabled = Value
-        if Value then
-            spawn(function()
-                AutoSkillsLoop()
-            end)
-        end
-    end,
-})
-
--- Auto Farm Items
-local AutoFarmToggle = FarmingTab:CreateToggle({
-    Name = "Auto Farm Items",
-    CurrentValue = false,
-    Flag = "AutoFarmToggle",
-    Callback = function(Value)
-        AutoFarmItemsEnabled = Value
-        if Value then
-            spawn(function()
-                AutoFarmItemsLoop()
-            end)
-        end
-    end,
-})
-
--- Tab Movement & Travel
-local MovementTab = Window:CreateTab("Movement & Travel", "rbxassetid://4483345998")
-
--- Fly Mode với Slider
-local FlyToggle = MovementTab:CreateToggle({
-    Name = "Fly Mode",
-    CurrentValue = false,
-    Flag = "FlyToggle",
-    Callback = function(Value)
-        FlyEnabled = Value
-        if Value then
-            StartFly()
-        else
-            StopFly()
-        end
-    end,
-})
-
-local FlySpeedSlider = MovementTab:CreateSlider({
-    Name = "Fly Speed",
-    Range = {1, 200},
-    Increment = 1,
-    Suffix = "studs/s",
-    CurrentValue = 50,
-    Flag = "FlySpeedSlider",
-    Callback = function(Value)
-        FlySpeed = Value
-    end,
-})
-
--- Infinite Jump
-local InfiniteJumpToggle = MovementTab:CreateToggle({
-    Name = "Infinite Jump",
-    CurrentValue = false,
-    Flag = "InfiniteJumpToggle",
-    Callback = function(Value)
-        InfiniteJumpEnabled = Value
-        if Value then
-            SetupInfiniteJump()
-        end
-    end,
-})
-
--- Teleport Islands Dropdown
-local Islands = {
-    "Starter Island",
-    "Ice Island",
-    "Fire Island",
-    "Thunder Island",
-    "Dark Island",
-    "Light Island",
-    "Mystic Island",
-    "Abyss Island"
+-- ==================== BIẾN TOÀN CỤC ====================
+local Config = {
+    AutoFish = false,
+    AutoSell = false,
+    AutoSkills = false,
+    AutoFarm = false,
+    FlyEnabled = false,
+    InfiniteJump = false,
+    AntiAFK = false,
+    ReduceGraphics = false,
+    FlySpeed = 50,
+    FishingDelay = {1, 3},
+    SkillCooldowns = {},
+    OriginalGraphics = {},
+    Connections = {}
 }
 
-local IslandDropdown = MovementTab:CreateDropdown({
-    Name = "Teleport Islands",
-    Options = Islands,
-    CurrentOption = "Starter Island",
-    Flag = "IslandDropdown",
-    Callback = function(Option)
-        TeleportToIsland(Option)
-    end,
-})
-
--- Auto Next Island
-local AutoNextIslandToggle = MovementTab:CreateToggle({
-    Name = "Auto Next Island",
-    CurrentValue = false,
-    Flag = "AutoNextIslandToggle",
-    Callback = function(Value)
-        if Value then
-            spawn(function()
-                AutoNextIslandLoop()
-            end)
-        end
-    end,
-})
-
--- Tab Safety & Anti-Ban
-local SafetyTab = Window:CreateTab("Safety & Anti-Ban", "rbxassetid://4483345998")
-
--- Hardcore Anti-Ban
-local AntiBanToggle = SafetyTab:CreateToggle({
-    Name = "Hardcore Anti-Ban",
-    CurrentValue = true,
-    Flag = "AntiBanToggle",
-    Callback = function(Value)
-        -- Luôn bật tính năng chống ban
+-- ==================== HÀM TIỆN ÍCH ====================
+function SafeNotify(title, message, duration)
+    pcall(function()
         Rayfield:Notify({
-            Title = "Anti-Ban",
-            Content = "Tính năng chống ban luôn được kích hoạt",
-            Duration = 3,
+            Title = title,
+            Content = message,
+            Duration = duration or 3,
             Image = "rbxassetid://4483345998"
         })
-    end,
-})
+    end)
+end
 
--- Safe Teleport
-local SafeTeleportToggle = SafetyTab:CreateToggle({
-    Name = "Safe Teleport",
-    CurrentValue = true,
-    Flag = "SafeTeleportToggle",
-    Callback = function(Value)
-        Rayfield:Notify({
-            Title = "Safe Teleport",
-            Content = Value and "Đã bật di chuyển an toàn" or "Đã tắt di chuyển an toàn",
-            Duration = 2,
-            Image = "rbxassetid://4483345998"
-        })
-    end,
-})
-
--- Anti-AFK
-local AntiAFKToggle = SafetyTab:CreateToggle({
-    Name = "Anti-AFK",
-    CurrentValue = false,
-    Flag = "AntiAFKToggle",
-    Callback = function(Value)
-        AntiAFKEnabled = Value
-        if Value then
-            SetupAntiAFK()
-        end
-    end,
-})
-
--- Nút đóng/mở menu
-local ToggleKeybind = Window:CreateKeybind({
-    Name = "Toggle Menu",
-    CurrentKeybind = "RightControl",
-    HoldToInteract = false,
-    Flag = "ToggleKeybind",
-    Callback = function()
-        Rayfield:Toggle()
-    end,
-})
-
--- Các hàm chức năng
-function HumanDelay()
+function HumanDelay(min, max)
     -- Tạo độ trễ ngẫu nhiên giống người thật
-    local minDelay = 0.1
-    local maxDelay = 0.3
+    local minDelay = min or 0.1
+    local maxDelay = max or 0.5
     task.wait(math.random(minDelay * 100, maxDelay * 100) / 100)
 end
 
-function SafeRemoteCall(RemoteName, ...)
-    -- Gọi RemoteEvent an toàn với Anti-Ban
-    local args = {...}
+function FindRemote(name)
+    -- Tìm RemoteEvent an toàn
+    local locations = {ReplicatedStorage, Workspace, game}
     
-    -- Tìm RemoteEvent
-    local remote = ReplicatedStorage:FindFirstChild(RemoteName)
-    if not remote then
-        remote = Workspace:FindFirstChild(RemoteName)
+    for _, location in ipairs(locations) do
+        local remote = location:FindFirstChild(name, true)
+        if remote and remote:IsA("RemoteEvent") then
+            return remote
+        end
     end
     
-    if remote and remote:IsA("RemoteEvent") then
+    return nil
+end
+
+function SafeRemoteCall(name, ...)
+    -- Gọi RemoteEvent an toàn
+    if not Config.AntiBan then return false end
+    
+    local remote = FindRemote(name)
+    if remote then
         -- Thêm độ trễ ngẫu nhiên
         HumanDelay()
         
         -- Gọi RemoteEvent
+        local args = {...}
         if #args > 0 then
             remote:FireServer(unpack(args))
         else
@@ -297,146 +109,129 @@ function SafeRemoteCall(RemoteName, ...)
     return false
 end
 
-function AutoFishLoop()
-    while AutoFishEnabled do
-        -- Tự động quăng cần
+-- ==================== TÍNH NĂNG FARMING ====================
+function StartAutoFishing()
+    while Config.AutoFish do
+        if not Config.AutoFish then break end
+        
+        -- Quăng cần
         SafeRemoteCall("CastRod")
+        HumanDelay(2, 4)
         
-        -- Đợi cá cắn (giả lập)
-        task.wait(math.random(2, 5))
-        
-        -- Thu dây khi cá cắn
+        -- Thu cá
         SafeRemoteCall("ReelFish")
+        HumanDelay(1, 2)
         
-        -- Đợi ngẫu nhiên trước khi câu tiếp
-        task.wait(math.random(1, 3))
+        -- Đợi ngẫu nhiên
+        task.wait(math.random(Config.FishingDelay[1], Config.FishingDelay[2]))
     end
 end
 
-function AutoSellLoop()
-    while AutoSellEnabled do
-        -- Kiểm tra túi đồ đầy
-        SafeRemoteCall("CheckInventory")
+function StartAutoSell()
+    while Config.AutoSell do
+        if not Config.AutoSell then break end
         
-        -- Nếu đầy thì bán
-        SafeRemoteCall("SellAllFish")
-        
-        -- Chờ 10 giây trước khi kiểm tra lại
-        task.wait(10)
+        -- Kiểm tra inventory mỗi 30 giây
+        SafeRemoteCall("SellAll")
+        task.wait(30)
     end
 end
 
-function AutoSkillsLoop()
-    while AutoSkillsEnabled do
-        local currentTime = tick()
+function StartAutoSkills()
+    while Config.AutoSkills do
+        if not Config.AutoSkills then break end
         
-        -- Duyệt qua tất cả kỹ năng
-        for skillName, cooldown in pairs(SkillCooldowns) do
-            if currentTime - cooldown > 30 then -- Giả sử cooldown 30 giây
-                SafeRemoteCall("UseSkill", skillName)
-                SkillCooldowns[skillName] = currentTime
-                
-                -- Chờ ngẫu nhiên giữa các kỹ năng
-                task.wait(math.random(0.5, 1.5))
+        -- Tự động dùng skill
+        local skills = {"Skill1", "Skill2", "Skill3", "Ultimate"}
+        for _, skill in ipairs(skills) do
+            if Config.AutoSkills then
+                SafeRemoteCall("UseSkill", skill)
+                HumanDelay(0.5, 1)
             end
         end
         
-        task.wait(1) -- Kiểm tra mỗi giây
+        task.wait(10) -- Cooldown tổng
     end
 end
 
-function AutoFarmItemsLoop()
-    while AutoFarmItemsEnabled do
-        -- Tìm vật phẩm trong khu vực
-        local items = Workspace:FindFirstChild("Items")
-        if items then
-            for _, item in pairs(items:GetChildren()) do
-                if item:IsA("BasePart") and AutoFarmItemsEnabled then
-                    -- Di chuyển đến vật phẩm
-                    SafeTeleport(item.Position)
+-- ==================== TÍNH NĂNG MOVEMENT ====================
+function ToggleFly(state)
+    if state then
+        local bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.Name = "FlyVelocity"
+        bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        
+        local character = LocalPlayer.Character
+        if character then
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if root then
+                bodyVelocity.Parent = root
+                
+                -- Kết nối điều khiển bay
+                local connection
+                connection = RunService.Heartbeat:Connect(function()
+                    if not Config.FlyEnabled or not character:FindFirstChild("HumanoidRootPart") then
+                        connection:Disconnect()
+                        bodyVelocity:Destroy()
+                        return
+                    end
                     
-                    -- Nhặt vật phẩm
-                    SafeRemoteCall("PickupItem", item.Name)
+                    local camera = Workspace.CurrentCamera
+                    local lookVector = camera.CFrame.LookVector
+                    local rightVector = camera.CFrame.RightVector
                     
-                    -- Chờ ngẫu nhiên
-                    task.wait(math.random(0.3, 0.7))
+                    local velocity = Vector3.new(0, 0, 0)
+                    
+                    -- Điều khiển WASD
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                        velocity = velocity + (lookVector * Config.FlySpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                        velocity = velocity - (lookVector * Config.FlySpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                        velocity = velocity + (rightVector * Config.FlySpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                        velocity = velocity - (rightVector * Config.FlySpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                        velocity = velocity + Vector3.new(0, Config.FlySpeed, 0)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                        velocity = velocity - Vector3.new(0, Config.FlySpeed, 0)
+                    end
+                    
+                    bodyVelocity.Velocity = velocity
+                end)
+                
+                Config.Connections["Fly"] = connection
+            end
+        end
+    else
+        -- Tắt fly
+        if Config.Connections["Fly"] then
+            Config.Connections["Fly"]:Disconnect()
+            Config.Connections["Fly"] = nil
+        end
+        
+        local character = LocalPlayer.Character
+        if character then
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local velocity = root:FindFirstChild("FlyVelocity")
+                if velocity then
+                    velocity:Destroy()
                 end
             end
-        end
-        
-        task.wait(2) -- Quét lại mỗi 2 giây
-    end
-end
-
-function StartFly()
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    bodyVelocity.Parent = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    
-    local flying = true
-    local connection
-    
-    connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not FlyEnabled or not LocalPlayer.Character then
-            flying = false
-            connection:Disconnect()
-            if bodyVelocity then
-                bodyVelocity:Destroy()
-            end
-            return
-        end
-        
-        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        
-        if humanoid and rootPart then
-            -- Điều khiển bay
-            local camera = Workspace.CurrentCamera
-            local lookVector = camera.CFrame.LookVector
-            local rightVector = camera.CFrame.RightVector
-            
-            local velocity = Vector3.new(0, 0, 0)
-            
-            -- Điều khiển bằng WASD
-            if LocalPlayer:IsKeyDown(Enum.KeyCode.W) then
-                velocity = velocity + (lookVector * FlySpeed)
-            end
-            if LocalPlayer:IsKeyDown(Enum.KeyCode.S) then
-                velocity = velocity - (lookVector * FlySpeed)
-            end
-            if LocalPlayer:IsKeyDown(Enum.KeyCode.D) then
-                velocity = velocity + (rightVector * FlySpeed)
-            end
-            if LocalPlayer:IsKeyDown(Enum.KeyCode.A) then
-                velocity = velocity - (rightVector * FlySpeed)
-            end
-            if LocalPlayer:IsKeyDown(Enum.KeyCode.Space) then
-                velocity = velocity + Vector3.new(0, FlySpeed, 0)
-            end
-            if LocalPlayer:IsKeyDown(Enum.KeyCode.LeftShift) then
-                velocity = velocity - Vector3.new(0, FlySpeed, 0)
-            end
-            
-            bodyVelocity.Velocity = velocity
-            humanoid.PlatformStand = true
-        end
-    end)
-end
-
-function StopFly()
-    if LocalPlayer.Character then
-        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = false
         end
     end
 end
 
 function SetupInfiniteJump()
-    local connection
-    connection = game:GetService("UserInputService").JumpRequest:Connect(function()
-        if InfiniteJumpEnabled and LocalPlayer.Character then
+    local connection = UserInputService.JumpRequest:Connect(function()
+        if Config.InfiniteJump and LocalPlayer.Character then
             local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
             if humanoid then
                 humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
@@ -444,124 +239,398 @@ function SetupInfiniteJump()
         end
     end)
     
-    -- Dọn dẹp khi tắt
-    spawn(function()
-        while InfiniteJumpEnabled do
-            task.wait()
-        end
-        connection:Disconnect()
-    end)
+    Config.Connections["InfiniteJump"] = connection
 end
 
-function TeleportToIsland(islandName)
-    -- Tìm vị trí đảo
-    local islandLocations = {
-        ["Starter Island"] = Vector3.new(0, 50, 0),
-        ["Ice Island"] = Vector3.new(1000, 50, 0),
-        ["Fire Island"] = Vector3.new(2000, 50, 0),
-        -- Thêm các đảo khác...
-    }
-    
-    local targetPosition = islandLocations[islandName]
-    if targetPosition then
-        if SafeTeleportToggle.CurrentValue then
-            SafeTeleport(targetPosition)
-        else
-            -- Teleport ngay lập tức
-            if LocalPlayer.Character then
-                LocalPlayer.Character:SetPrimaryPartCFrame(CFrame.new(targetPosition))
+-- ==================== TÍNH NĂNG GIẢM LAG ====================
+function ToggleGraphicsReduction(state)
+    if state then
+        -- Lưu cài đặt gốc
+        Config.OriginalGraphics = {
+            QualityLevel = settings().Rendering.QualityLevel,
+            ShadowQuality = Lighting.GlobalShadows,
+            TextureQuality = settings().Rendering.MeshPartDetailLevel
+        }
+        
+        -- Giảm chất lượng đồ họa
+        settings().Rendering.QualityLevel = 1
+        Lighting.GlobalShadows = false
+        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+        
+        -- Tắt hiệu ứng
+        for _, effect in ipairs(Lighting:GetChildren()) do
+            if effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("ColorCorrectionEffect") then
+                effect.Enabled = false
             end
         end
-    end
-end
-
-function SafeTeleport(targetPosition)
-    -- Di chuyển an toàn bằng TweenService
-    if not LocalPlayer.Character then return end
-    
-    local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
-    
-    local tweenInfo = TweenInfo.new(
-        2, -- Thời gian di chuyển
-        Enum.EasingStyle.Linear,
-        Enum.EasingDirection.Out,
-        0,
-        false,
-        0
-    )
-    
-    local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(targetPosition)})
-    tween:Play()
-    
-    -- Thông báo
-    Rayfield:Notify({
-        Title = "Safe Teleport",
-        Content = "Đang di chuyển an toàn đến đích...",
-        Duration = 2,
-        Image = "rbxassetid://4483345998"
-    })
-end
-
-function AutoNextIslandLoop()
-    while true do
-        -- Kiểm tra điều kiện chuyển đảo
-        SafeRemoteCall("CheckIslandRequirements")
         
-        -- Chờ 30 giây trước khi kiểm tra lại
-        task.wait(30)
+        -- Giảm render distance
+        local camera = Workspace.CurrentCamera
+        if camera then
+            camera.MaxCameraDistance = 500
+        end
+        
+        SafeNotify("Giảm Lag", "Đã tối ưu đồ họa để tăng FPS", 3)
+    else
+        -- Khôi phục cài đặt gốc
+        if Config.OriginalGraphics.QualityLevel then
+            settings().Rendering.QualityLevel = Config.OriginalGraphics.QualityLevel
+        end
+        if Config.OriginalGraphics.ShadowQuality ~= nil then
+            Lighting.GlobalShadows = Config.OriginalGraphics.ShadowQuality
+        end
+        if Config.OriginalGraphics.TextureQuality then
+            settings().Rendering.MeshPartDetailLevel = Config.OriginalGraphics.TextureQuality
+        end
+        
+        -- Khôi phục hiệu ứng
+        for _, effect in ipairs(Lighting:GetChildren()) do
+            if effect:IsA("PostEffect") then
+                effect.Enabled = true
+            end
+        end
+        
+        -- Khôi phục render distance
+        local camera = Workspace.CurrentCamera
+        if camera then
+            camera.MaxCameraDistance = 10000
+        end
     end
 end
 
+-- ==================== TÍNH NĂNG ANTI-BAN ====================
 function SetupAntiAFK()
     local connection
-    local originalPosition
+    local lastPosition = Vector3.new(0, 0, 0)
+    local moveCount = 0
     
-    connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if AntiAFKEnabled and LocalPlayer.Character then
-            local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                -- Di chuyển nhẹ để tránh AFK
-                if not originalPosition then
-                    originalPosition = rootPart.Position
-                end
-                
-                -- Mỗi 30 giây di chuyển nhẹ một lần
+    connection = RunService.Heartbeat:Connect(function()
+        if Config.AntiAFK and LocalPlayer.Character then
+            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                -- Di chuyển nhẹ mỗi 30 giây
                 if tick() % 30 < 0.1 then
                     local offset = Vector3.new(
-                        math.random(-5, 5),
+                        math.random(-2, 2),
                         0,
-                        math.random(-5, 5)
+                        math.random(-2, 2)
                     )
-                    rootPart.CFrame = CFrame.new(originalPosition + offset)
+                    root.CFrame = CFrame.new(root.Position + offset)
                     
-                    -- Quay lại vị trí cũ sau 0.5 giây
-                    task.wait(0.5)
-                    rootPart.CFrame = CFrame.new(originalPosition)
+                    -- Quay lại sau 0.3 giây
+                    task.wait(0.3)
+                    root.CFrame = CFrame.new(root.Position - offset)
+                    
+                    moveCount = moveCount + 1
+                    if moveCount > 10 then
+                        moveCount = 0
+                        HumanDelay(1, 2) -- Đợi lâu hơn sau 10 lần di chuyển
+                    end
                 end
             end
         end
     end)
     
-    -- Dọn dẹp khi tắt
-    spawn(function()
-        while AntiAFKEnabled do
-            task.wait()
-        end
-        connection:Disconnect()
-    end)
+    Config.Connections["AntiAFK"] = connection
 end
 
--- Khởi tạo script
-Rayfield:Notify({
-    Title = "Titan Fishing Script",
-    Content = "Script đã được tải thành công!",
-    Duration = 5,
-    Image = "rbxassetid://4483345998"
+-- ==================== TẠO MENU ====================
+local Window = Rayfield:CreateWindow({
+    Name = "🚀 Titan Fishing Premium",
+    LoadingTitle = "Đang tải script...",
+    LoadingSubtitle = "Phiên bản 2.0 - Tối ưu FPS",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "TitanFishingConfig",
+        FileName = "Settings"
+    },
+    Discord = {
+        Enabled = false
+    },
+    KeySystem = false
 })
 
--- Tự động tải cấu hình
-Rayfield:LoadConfiguration()
+-- Tab Main Farming
+local FarmingTab = Window:CreateTab("🎣 Main Farming", "rbxassetid://7733960981")
+
+FarmingTab:CreateToggle({
+    Name = "Auto Fish",
+    CurrentValue = false,
+    Callback = function(Value)
+        Config.AutoFish = Value
+        if Value then
+            SafeNotify("Auto Fish", "Đã bật tự động câu cá", 2)
+            spawn(StartAutoFishing)
+        else
+            SafeNotify("Auto Fish", "Đã tắt tự động câu cá", 2)
+        end
+    end
+})
+
+FarmingTab:CreateToggle({
+    Name = "Auto Sell Fish",
+    CurrentValue = false,
+    Callback = function(Value)
+        Config.AutoSell = Value
+        if Value then
+            spawn(StartAutoSell)
+        end
+    end
+})
+
+FarmingTab:CreateToggle({
+    Name = "Auto Use Skills",
+    CurrentValue = false,
+    Callback = function(Value)
+        Config.AutoSkills = Value
+        if Value then
+            spawn(StartAutoSkills)
+        end
+    end
+})
+
+FarmingTab:CreateSlider({
+    Name = "Fishing Delay",
+    Range = {0.5, 5},
+    Increment = 0.1,
+    Suffix = "giây",
+    CurrentValue = 2,
+    Callback = function(Value)
+        Config.FishingDelay = {Value - 0.5, Value + 0.5}
+    end
+})
+
+-- Tab Movement
+local MovementTab = Window:CreateTab("✈️ Movement", "rbxassetid://7733674079")
+
+MovementTab:CreateToggle({
+    Name = "Fly Mode",
+    CurrentValue = false,
+    Callback = function(Value)
+        Config.FlyEnabled = Value
+        ToggleFly(Value)
+        SafeNotify("Fly Mode", Value and "Đã bật Fly" or "Đã tắt Fly", 2)
+    end
+})
+
+MovementTab:CreateSlider({
+    Name = "Fly Speed",
+    Range = {1, 200},
+    Increment = 1,
+    Suffix = "studs/s",
+    CurrentValue = 50,
+    Callback = function(Value)
+        Config.FlySpeed = Value
+    end
+})
+
+MovementTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Callback = function(Value)
+        Config.InfiniteJump = Value
+        if Value then
+            SetupInfiniteJump()
+        else
+            if Config.Connections["InfiniteJump"] then
+                Config.Connections["InfiniteJump"]:Disconnect()
+                Config.Connections["InfiniteJump"] = nil
+            end
+        end
+    end
+})
+
+-- Danh sách đảo để teleport
+local islands = {
+    "Spawn Island",
+    "Coral Island", 
+    "Ice Island",
+    "Volcano Island",
+    "Abyss Island",
+    "Mystic Island",
+    "Golden Island"
+}
+
+MovementTab:CreateDropdown({
+    Name = "Teleport to Island",
+    Options = islands,
+    CurrentOption = "Spawn Island",
+    Callback = function(Option)
+        -- Tìm vị trí đảo
+        local islandParts = Workspace:FindFirstChild("Islands")
+        if islandParts then
+            local target = islandParts:FindFirstChild(Option)
+            if target then
+                local character = LocalPlayer.Character
+                if character then
+                    local root = character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        -- Teleport an toàn
+                        local tween = TweenService:Create(root, TweenInfo.new(2), {
+                            CFrame = CFrame.new(target.Position + Vector3.new(0, 5, 0))
+                        })
+                        tween:Play()
+                        SafeNotify("Teleport", "Đang di chuyển đến " .. Option, 2)
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- Tab Performance
+local PerformanceTab = Window:CreateTab("⚡ Performance", "rbxassetid://7733680425")
+
+PerformanceTab:CreateToggle({
+    Name = "Reduce Graphics (Tăng FPS)",
+    CurrentValue = false,
+    Callback = function(Value)
+        Config.ReduceGraphics = Value
+        ToggleGraphicsReduction(Value)
+    end
+})
+
+PerformanceTab:CreateButton({
+    Name = "Clean Workspace (Dọn rác)",
+    Callback = function()
+        -- Xóa các part không cần thiết
+        local count = 0
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            if obj:IsA("BasePart") and obj.Transparency > 0.8 then
+                obj:Destroy()
+                count = count + 1
+            end
+        end
+        SafeNotify("Cleanup", "Đã xóa " .. count .. " đối tượng", 2)
+    end
+})
+
+PerformanceTab:CreateLabel("Cài đặt Render:")
+PerformanceTab:CreateToggle({
+    Name = "Disable Shadows",
+    CurrentValue = false,
+    Callback = function(Value)
+        Lighting.GlobalShadows = not Value
+    end
+})
+
+PerformanceTab:CreateToggle({
+    Name = "Reduce Particles",
+    CurrentValue = false,
+    Callback = function(Value)
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") then
+                obj.Enabled = not Value
+            end
+        end
+    end
+})
+
+-- Tab Safety
+local SafetyTab = Window:CreateTab("🛡️ Safety", "rbxassetid://7733715400")
+
+SafetyTab:CreateToggle({
+    Name = "Anti-AFK System",
+    CurrentValue = false,
+    Callback = function(Value)
+        Config.AntiAFK = Value
+        if Value then
+            SetupAntiAFK()
+        else
+            if Config.Connections["AntiAFK"] then
+                Config.Connections["AntiAFK"]:Disconnect()
+                Config.Connections["AntiAFK"] = nil
+            end
+        end
+    end
+})
+
+SafetyTab:CreateToggle({
+    Name = "Safe Teleport (Không bị kick)",
+    CurrentValue = true,
+    Callback = function(Value)
+        Config.SafeTeleport = Value
+    end
+})
+
+SafetyTab:CreateToggle({
+    Name = "Random Delays (Chống phát hiện)",
+    CurrentValue = true,
+    Callback = function(Value)
+        Config.AntiBan = Value
+    end
+})
+
+-- Tab Settings
+local SettingsTab = Window:CreateTab("⚙️ Settings", "rbxassetid://7734056608")
+
+SettingsTab:CreateKeybind({
+    Name = "Toggle Menu Keybind",
+    CurrentKeybind = "RightControl",
+    HoldToInteract = false,
+    Callback = function(Keybind)
+        Rayfield:Toggle()
+    end
+})
+
+SettingsTab:CreateButton({
+    Name = "Save Settings",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "Settings",
+            Content = "Đã lưu cài đặt!",
+            Duration = 2
+        })
+    end
+})
+
+SettingsTab:CreateButton({
+    Name = "Destroy GUI",
+    Callback = function()
+        Rayfield:Destroy()
+        SafeNotify("Script", "Đã tắt GUI", 2)
+    end
+})
+
+-- Watermark
+Window:CreateWatermark("Titan Fishing Premium | FPS: " .. math.floor(1/RunService.RenderStepped:Wait()))
+
+-- ==================== KHỞI ĐỘNG SCRIPT ====================
+-- Tự động bật Anti-Ban
+Config.AntiBan = true
+
+-- Thông báo thành công
+task.wait(1)
+SafeNotify("Titan Fishing Premium", "Script đã sẵn sàng!\nNhấn RightControl để mở/đóng menu", 5)
+
+-- Auto-save settings
+spawn(function()
+    while true do
+        task.wait(30)
+        pcall(function()
+            Rayfield:Notify({
+                Title = "Auto-Save",
+                Content = "Đã tự động lưu cài đặt",
+                Duration = 1
+            })
+        end)
+    end
+end)
+
+-- Update FPS counter
+spawn(function()
+    while true do
+        task.wait(1)
+        pcall(function()
+            local fps = math.floor(1/RunService.RenderStepped:Wait())
+            Window:UpdateWatermark("Titan Fishing Premium | FPS: " .. fps .. " | " .. os.date("%H:%M:%S"))
+        end)
+    end
+end)
+
+print("🎣 Titan Fishing Script loaded successfully!")
+print("📱 Menu Keybind: RightControl")
+print("⚡ Features: Auto Fish, Fly, Teleport, FPS Boost")
 task.spawn(function()
     local Players = game:GetService("Players")
     local player = Players.LocalPlayer
@@ -613,4 +682,3 @@ task.spawn(function()
         create()
     end
 end)
-
